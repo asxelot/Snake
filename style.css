@@ -1,15 +1,5 @@
-#field table {
+canvas {
     border: 1px solid #000;
-}
-    #field table td {
-        height: 10px;
-        width: 10px;
-    }
-.apple {
-    background-color: green;
-}
-.snake {
-    background-color: blue;
 }
 #restart {
     color: red;

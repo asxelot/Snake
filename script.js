@@ -1,39 +1,23 @@
-var q = document.querySelector.bind(document);
-var Field = {
-    q: q('#field'),
-    draw: function() {
-        this.h = 40;
-        this.w = this.h;
+var q = document.querySelector.bind(document),
+    canvas = q('canvas'),
+    w = canvas.width = 400,
+    h = canvas.height = 400,
+    c = canvas.getContext('2d'),
+    cw = 10;        // cell width
 
-        this.q.innerHTML = '<table>' + Array(this.h + 1).join('<tr>' +
-            Array(this.w + 1).join('<td></td>') + '</tr>') + '</table>';
-    },
-    getCell: function(x, y) {
-        return this.q.querySelector('tbody').children[y].children[x];
-    },
-    createApple: function() {
-        var x, y;
-        do {
-            x = ~~(Math.random() * this.w);
-            y = ~~(Math.random() * this.h);
-        } while ( this.getCell(x, y).className == 'snake' );
-        this.getCell(x, y).className = 'apple';
-    }
-};
+function equal(o1, o2) {
+    return JSON.stringify(o1) == JSON.stringify(o2);
+}
 
 var Snake = {
     init: function() {
-        // write in init for reset on restart
         this.body = [];
         this.head = {x: 3, y: 0};
-        this.dir = 2;               // 0: left, 1: up, 2: right, 3: down
+        this.dir = 2;              // 0: left, 1: up, 2: right, 3: down
         this.isTurned = false;
         this.turnQueue = null;
 
-        for (var x = 4; x--;) this.body.push( Field.getCell(x, 0) );
-        this.body.forEach(function(cell) {
-            cell.className = 'snake';
-        });
+        for (var x = 4; x--;) this.body.push({x: x, y: 0});
     },
     turn: function(dir) {
         if ( Math.abs(this.dir - dir) == 2 ) return;    // ignore if press back
@@ -42,27 +26,40 @@ var Snake = {
         this.isTurned = true;
     },
     move: function() {
-        var headCell;
+        var tail;
 
         this.dir % 2 ? this.head.y += this.dir - 2 : this.head.x += this.dir - 1;
 
-        if ( this.head.x < 0 || this.head.x >= Field.w ||
-             this.head.y < 0 || this.head.y >= Field.h ||
-             (headCell=Field.getCell(this.head.x, this.head.y)).className=='snake' ) {
+        if ( this.head.x < 0 || this.head.x >= w/cw ||
+             this.head.y < 0 || this.head.y >= h/cw ||
+             this.body.some(function(cell) {
+                return equal(cell, Snake.head);
+             }) ) {
             Game.over();
             return;
         }
 
-        this.body.unshift( headCell );
+        this.body.unshift({x: this.head.x, y: this.head.y});
 
-        if ( headCell.className == 'apple' ) {
-            Game.qScore.textContent = ++Game.score ;
-            Field.createApple();
+        if ( equal(this.head, Apple) ) {
+            Game.qScore.textContent = ++Game.score;
+            Apple.create();
         } else {
-            ( this.body.pop() ).className = '';
+            tail = this.body.pop();
+            c.clearRect(tail.x*cw, tail.y*cw, cw, cw);
         }
-        headCell.className = 'snake';
         this.isTurned = false;
+    }
+};
+
+var Apple = {
+    create: function() {
+        do {
+            this.x = ~~(Math.random()*(w/cw));
+            this.y = ~~(Math.random()*(h/cw));
+        } while ( Snake.body.some(function(cell) {
+            return equal(cell, Apple);
+        }) );
     }
 };
 
@@ -75,14 +72,15 @@ var Game = {
     qHighscore: q('#highscore'),
     qRestart: q('#restart'),
     start: function() {
+        Snake.init();
+        Apple.create();
+        this.draw();
+        this.getHighscore();
+        this.loop();
+
         this.qRestart.onclick = function() {
             Game.restart();
         };
-        Field.draw();
-        Snake.init();
-        Field.createApple();
-        this.getHighscore();
-        this.loop();
 
         document.onkeydown = function(e) {
             var key = e.keyCode - 37;
@@ -91,13 +89,25 @@ var Game = {
         };
     },
     restart: function() {
-        Field.draw();
+        this.draw();
+        c.clearRect(0, 0, w, h);
         this.qRestart.style.display = 'none';
         this.qScore.textContent = this.score = 0 ;
         Snake.init();
-        Field.createApple();
+        Apple.create();
         this.loop();
         this.isOver = false;
+    },
+    draw: function() {
+        c.beginPath();
+        Snake.body.forEach(function(cell) {
+            c.rect(cell.x*cw, cell.y*cw, cw, cw);
+        });
+        c.rect(Apple.x*cw, Apple.y*cw, cw, cw);
+        c.fillStyle = 'blue';
+        c.strokeStyle = 'white';
+        c.fill();
+        c.stroke();
     },
     getHighscore: function() {
         var cookie = document.cookie;
@@ -117,6 +127,7 @@ var Game = {
     loop: function() {
         this.interval = setInterval(function() {
             Snake.move();
+            Game.draw();
             if ( Snake.turnQueue ) {
                 Snake.turn(Snake.turnQueue);
                 Snake.turnQueue = null;
