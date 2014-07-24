@@ -1,7 +1,7 @@
 var Field = {
     $: $('#field'),
     draw: function() {
-        this.h = 20;
+        this.h = 40;
         this.w = this.h;
 
         this.$.html('<table>' + Array(this.h + 1).join('<tr>' +
@@ -33,7 +33,7 @@ var Snake = {
         $(this.body).addClass('snake');
     },
     turn: function(dir) {
-        if ( Math.abs(this.dir - dir) == 2 ) return;    // if press back
+        if ( Math.abs(this.dir - dir) == 2 ) return;    // ignore if press back
         if ( !this.isTurned ) this.dir = dir;
         if ( this.isTurned && !this.turnQueue ) this.turnQueue = dir;
         this.isTurned = true;
@@ -65,6 +65,7 @@ var Snake = {
 var Game = {
     score: 0,
     highscore: 0,
+    isPause: false,
     $score: $('#score'),
     $highscore: $('#highscore'),
     $restart: $('#restart').on('click', 'button', function() {
@@ -75,13 +76,13 @@ var Game = {
         Snake.init();
         Field.createApple();
         this.getHighscore();
+        this.loop();
 
         $(document).on('keydown', function(e) {
             var key = e.keyCode - 37;
-            if ( key >= 0 && key < 4 ) Snake.turn(key);
+            if ( key >= 0 && key < 4 && !Game.isPause ) Snake.turn(key);
+            if ( e.keyCode == 32 ) Game.pause();
         });
-
-        this.loop();
     },
     restart: function() {
         Field.$.find('td').removeClass();
@@ -89,7 +90,6 @@ var Game = {
         this.$score.text( this.score = 0 );
         Snake.init();
         Field.createApple();
-
         this.loop();
     },
     getHighscore: function() {
@@ -114,7 +114,16 @@ var Game = {
                 Snake.turn(Snake.turnQueue);
                 Snake.turnQueue = null;
             }
-        }, 150);
+        }, 60);
+    },
+    pause: function() {
+        if ( !this.isPause ) {
+            clearInterval(this.interval);
+            this.isPause = true;
+        } else {
+            this.loop();
+            this.isPause = false;
+        }
     },
     over: function() {
         clearInterval(this.interval);
