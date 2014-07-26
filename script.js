@@ -1,6 +1,6 @@
 var q = document.querySelector.bind(document),
     canvas = q('canvas'),
-    w = canvas.width = 400,
+    w = canvas.width  = 400,
     h = canvas.height = 400,
     c = canvas.getContext('2d'),
     cw = 10;        // cell width
@@ -26,15 +26,11 @@ var Snake = {
         this.isTurned = true;
     },
     move: function() {
-        var tail;
-
         this.dir % 2 ? this.head.y += this.dir - 2 : this.head.x += this.dir - 1;
 
         if ( this.head.x < 0 || this.head.x >= w/cw ||
              this.head.y < 0 || this.head.y >= h/cw ||
-             this.body.some(function(cell) {
-                return equal(cell, Snake.head);
-             }) ) {
+             this.contains(this.head) ) {
             Game.over();
             return;
         }
@@ -42,25 +38,34 @@ var Snake = {
         this.body.unshift({x: this.head.x, y: this.head.y});
 
         if ( equal(this.head, Apple) ) {
-            Game.qScore.textContent = ++Game.score;
+            UI.score.textContent = ++Game.score;
             Apple.create();
         } else {
-            tail = this.body.pop();
-            c.clearRect(tail.x*cw, tail.y*cw, cw, cw);
+            var tail = this.body.pop();
+            // c.clearRect(tail.x*cw, tail.y*cw, cw, cw);
         }
         this.isTurned = false;
+    },
+    contains: function(target) {
+        return this.body.some(function(cell) {
+            return equal(cell, target);
+        });
     }
 };
 
 var Apple = {
     create: function() {
         do {
-            this.x = ~~(Math.random()*(w/cw));
-            this.y = ~~(Math.random()*(h/cw));
-        } while ( Snake.body.some(function(cell) {
-            return equal(cell, Apple);
-        }) );
+            this.x = ~~(Math.random()*w/cw);
+            this.y = ~~(Math.random()*h/cw);
+        } while ( Snake.contains(Apple) );
     }
+};
+
+var UI = {
+    score: q('#score'),
+    highscore: q('#highscore'),
+    restart: q('#restart')
 };
 
 var Game = {
@@ -68,9 +73,6 @@ var Game = {
     highscore: 0,
     isPause: false,
     isOver: false,
-    qScore: q('#score'),
-    qHighscore: q('#highscore'),
-    qRestart: q('#restart'),
     start: function() {
         Snake.init();
         Apple.create();
@@ -78,21 +80,20 @@ var Game = {
         this.getHighscore();
         this.loop();
 
-        this.qRestart.onclick = function() {
+        UI.restart.onclick = function() {
             Game.restart();
         };
-
         document.onkeydown = function(e) {
-            var key = e.keyCode - 37;
-            if ( key >= 0 && key < 4 && !Game.isPause ) Snake.turn(key);
+            if ( e.keyCode > 36 && e.keyCode < 41 && !Game.isPause )
+                Snake.turn(e.keyCode - 37);
             if ( e.keyCode == 32 ) Game.pause();
         };
     },
     restart: function() {
         this.draw();
         c.clearRect(0, 0, w, h);
-        this.qRestart.style.display = 'none';
-        this.qScore.textContent = this.score = 0 ;
+        UI.restart.style.display = 'none';
+        UI.score.textContent = this.score = 0 ;
         Snake.init();
         Apple.create();
         this.loop();
@@ -100,10 +101,10 @@ var Game = {
     },
     draw: function() {
         c.beginPath();
-        Snake.body.forEach(function(cell) {
+        c.clearRect(0, 0, w, h);
+        Snake.body.concat(Apple).forEach(function(cell) {
             c.rect(cell.x*cw, cell.y*cw, cw, cw);
         });
-        c.rect(Apple.x*cw, Apple.y*cw, cw, cw);
         c.fillStyle = 'blue';
         c.strokeStyle = 'white';
         c.fill();
@@ -116,13 +117,13 @@ var Game = {
         } else {
             this.setHighscore(0);
         }
-        this.qHighscore.textContent = this.highscore;
+        UI.highscore.textContent = this.highscore;
     },
     setHighscore: function(score) {
         var date = new Date;
         date.setDate( date.getDate() + 365 );
         document.cookie = 'highscore=' + score + '; expires=' + date.toUTCString();
-        this.qHighscore.textContent = score;
+        UI.highscore.textContent = score;
     },
     loop: function() {
         this.interval = setInterval(function() {
@@ -146,8 +147,8 @@ var Game = {
     },
     over: function() {
         clearInterval(this.interval);
-        this.qRestart.style.display = 'inline';
-        this.qRestart.querySelector('button').focus();
+        UI.restart.style.display = 'inline';
+        UI.restart.querySelector('button').focus();
         if ( this.score > this.highscore ) this.setHighscore(this.score);
         this.isOver = true;
     }
