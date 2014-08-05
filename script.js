@@ -17,7 +17,15 @@ var Snake = {
         this.isTurned = false;
         this.turnQueue = null;
 
-        for (var x = 4; x--;) this.body.push({x: x, y: 0});
+        c.beginPath();
+        for (var x = 4; x--;) {
+            this.body.push({x: x, y: 0});
+            c.rect(x*cw, 0, cw, cw);
+        }
+        c.fillStyle = 'blue';
+        c.strokeStyle = 'white';
+        c.fill();
+        c.stroke();
     },
     turn: function(dir) {
         if ( Math.abs(this.dir - dir) == 2 ) return;    // ignore if press back
